@@ -19,8 +19,8 @@ bitflags = "2"
 byteorder = "1.3.2"
 libc = "0.2.66"
 log = { version = "0.4.20", features = ["std"] }
-netlink-packet-core = { version = "0.7.0" }
-netlink-packet-utils = { version = "0.6" }
+netlink-packet-core = { version = "0.7.0", git = "https://github.com/ssrlive/netlink-packet-core.git" }
+netlink-packet-utils = { version = "0.6", git = "https://github.com/ssrlive/netlink-packet-utils.git" }
 
 [dev-dependencies]
 netlink-sys = { version = "0.8.5" }
