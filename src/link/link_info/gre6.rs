@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
     DecodeError, Parseable,
@@ -33,13 +32,11 @@ impl Nla for InfoGreTun6 {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoGreTun6 {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         #[allow(clippy::match_single_binding)]
         Ok(match buf.kind() {
-            kind => Self::Other(
-                DefaultNla::parse(buf)
-                    .context(format!("unknown NLA type {kind} for ip6gre"))?,
-            ),
+            _kind => Self::Other(DefaultNla::parse(buf)?),
         })
     }
 }

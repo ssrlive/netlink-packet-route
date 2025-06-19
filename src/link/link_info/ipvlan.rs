@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use byteorder::{ByteOrder, NativeEndian};
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
@@ -49,22 +48,16 @@ impl Nla for InfoIpVlan {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoIpVlan {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         use self::InfoIpVlan::*;
         let payload = buf.value();
         Ok(match buf.kind() {
-            IFLA_IPVLAN_MODE => Mode(
-                parse_u16(payload)
-                    .context("invalid IFLA_IPVLAN_MODE value")?
-                    .into(),
-            ),
-            IFLA_IPVLAN_FLAGS => Self::Flags(IpVlanFlags::from_bits_retain(
-                parse_u16(payload)
-                    .context("failed to parse IFLA_IPVLAN_FLAGS")?,
-            )),
-            kind => Other(DefaultNla::parse(buf).context(format!(
-                "unknown NLA type {kind} for IFLA_INFO_DATA(ipvlan)"
-            ))?),
+            IFLA_IPVLAN_MODE => Mode(parse_u16(payload)?.into()),
+            IFLA_IPVLAN_FLAGS => {
+                Self::Flags(IpVlanFlags::from_bits_retain(parse_u16(payload)?))
+            }
+            _kind => Other(DefaultNla::parse(buf)?),
         })
     }
 }
@@ -106,22 +99,16 @@ impl Nla for InfoIpVtap {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoIpVtap {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         use self::InfoIpVtap::*;
         let payload = buf.value();
         Ok(match buf.kind() {
-            IFLA_IPVLAN_MODE => Mode(
-                parse_u16(payload)
-                    .context("invalid IFLA_IPVLAN_MODE value")?
-                    .into(),
-            ),
-            IFLA_IPVLAN_FLAGS => Self::Flags(IpVtapFlags::from_bits_retain(
-                parse_u16(payload)
-                    .context("failed to parse IFLA_IPVLAN_FLAGS")?,
-            )),
-            kind => Other(DefaultNla::parse(buf).context(format!(
-                "unknown NLA type {kind} for IFLA_INFO_DATA(ipvlan)"
-            ))?),
+            IFLA_IPVLAN_MODE => Mode(parse_u16(payload)?.into()),
+            IFLA_IPVLAN_FLAGS => {
+                Self::Flags(IpVtapFlags::from_bits_retain(parse_u16(payload)?))
+            }
+            _kind => Other(DefaultNla::parse(buf)?),
         })
     }
 }

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use byteorder::{ByteOrder, NativeEndian};
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
@@ -74,39 +73,19 @@ impl Nla for InfoHsr {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoHsr {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         use self::InfoHsr::*;
         let payload = buf.value();
         Ok(match buf.kind() {
-            IFLA_HSR_PORT1 => Port1(
-                parse_u32(payload).context("invalid IFLA_HSR_PORT1 value")?,
-            ),
-            IFLA_HSR_PORT2 => Port2(
-                parse_u32(payload).context("invalid IFLA_HSR_PORT2 value")?,
-            ),
-            IFLA_HSR_MULTICAST_SPEC => MulticastSpec(
-                parse_u8(payload)
-                    .context("invalid IFLA_HSR_MULTICAST_SPEC value")?,
-            ),
-            IFLA_HSR_SUPERVISION_ADDR => SupervisionAddr(
-                parse_mac(payload)
-                    .context("invalid IFLA_HSR_SUPERVISION_ADDR value")?,
-            ),
-            IFLA_HSR_SEQ_NR => SeqNr(
-                parse_u16(payload).context("invalid IFLA_HSR_SEQ_NR value")?,
-            ),
-            IFLA_HSR_VERSION => Version(
-                parse_u8(payload).context("invalid IFLA_HSR_VERSION value")?,
-            ),
-            IFLA_HSR_PROTOCOL => Protocol(
-                parse_u8(payload)
-                    .context("invalid IFLA_HSR_PROTOCOL value")?
-                    .into(),
-            ),
-            kind => Other(
-                DefaultNla::parse(buf)
-                    .context(format!("unknown NLA type {kind}"))?,
-            ),
+            IFLA_HSR_PORT1 => Port1(parse_u32(payload)?),
+            IFLA_HSR_PORT2 => Port2(parse_u32(payload)?),
+            IFLA_HSR_MULTICAST_SPEC => MulticastSpec(parse_u8(payload)?),
+            IFLA_HSR_SUPERVISION_ADDR => SupervisionAddr(parse_mac(payload)?),
+            IFLA_HSR_SEQ_NR => SeqNr(parse_u16(payload)?),
+            IFLA_HSR_VERSION => Version(parse_u8(payload)?),
+            IFLA_HSR_PROTOCOL => Protocol(parse_u8(payload)?.into()),
+            _kind => Other(DefaultNla::parse(buf)?),
         })
     }
 }

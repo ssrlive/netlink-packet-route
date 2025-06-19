@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer, NlasIterator},
     traits::{Parseable, ParseableParametrized},
@@ -67,33 +66,24 @@ impl<'a, T> ParseableParametrized<NlaBuffer<&'a T>, &str> for TcOption
 where
     T: AsRef<[u8]> + ?Sized,
 {
+    type Error = DecodeError;
     fn parse_with_param(
         buf: &NlaBuffer<&'a T>,
         kind: &str,
     ) -> Result<Self, DecodeError> {
         Ok(match kind {
             TcQdiscIngress::KIND => {
-                Self::Ingress(TcQdiscIngressOption::parse(buf).context(
-                    "failed to parse ingress TCA_OPTIONS attributes",
-                )?)
+                Self::Ingress(TcQdiscIngressOption::parse(buf)?)
             }
-            TcFilterFlower::KIND => Self::Flower(
-                TcFilterFlowerOption::parse(buf)
-                    .context("failed to parse flower TCA_OPTIONS attributes")?,
-            ),
+            TcFilterFlower::KIND => {
+                Self::Flower(TcFilterFlowerOption::parse(buf)?)
+            }
             TcQdiscFqCodel::KIND => {
-                Self::FqCodel(TcQdiscFqCodelOption::parse(buf).context(
-                    "failed to parse fq_codel TCA_OPTIONS attributes",
-                )?)
+                Self::FqCodel(TcQdiscFqCodelOption::parse(buf)?)
             }
-            TcFilterU32::KIND => Self::U32(
-                TcFilterU32Option::parse(buf)
-                    .context("failed to parse u32 TCA_OPTIONS attributes")?,
-            ),
+            TcFilterU32::KIND => Self::U32(TcFilterU32Option::parse(buf)?),
             TcFilterMatchAll::KIND => {
-                Self::MatchAll(TcFilterMatchAllOption::parse(buf).context(
-                    "failed to parse matchall TCA_OPTIONS attributes",
-                )?)
+                Self::MatchAll(TcFilterMatchAllOption::parse(buf)?)
             }
             _ => Self::Other(DefaultNla::parse(buf)?),
         })
@@ -106,6 +96,7 @@ impl<'a, T> ParseableParametrized<NlaBuffer<&'a T>, &str> for VecTcOption
 where
     T: AsRef<[u8]> + ?Sized,
 {
+    type Error = DecodeError;
     fn parse_with_param(
         buf: &NlaBuffer<&'a T>,
         kind: &str,
@@ -118,16 +109,8 @@ where
             | TcQdiscFqCodel::KIND => {
                 let mut nlas = vec![];
                 for nla in NlasIterator::new(buf.value()) {
-                    let nla = nla.context(format!(
-                        "Invalid TCA_OPTIONS for kind: {kind}",
-                    ))?;
-                    nlas.push(
-                        TcOption::parse_with_param(&nla, kind).context(
-                            format!(
-                                "Failed to parse TCA_OPTIONS for kind: {kind}",
-                            ),
-                        )?,
-                    )
+                    let nla = nla?;
+                    nlas.push(TcOption::parse_with_param(&nla, kind)?)
                 }
                 Self(nlas)
             }

@@ -25,6 +25,7 @@ buffer!(VfInfoLinkStateBuffer(VF_INFO_LINK_STATE_LEN) {
 impl<T: AsRef<[u8]> + ?Sized> Parseable<VfInfoLinkStateBuffer<&T>>
     for VfInfoLinkState
 {
+    type Error = DecodeError;
     fn parse(buf: &VfInfoLinkStateBuffer<&T>) -> Result<Self, DecodeError> {
         Ok(Self::new(buf.vf_id(), buf.state().into()))
     }

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::nla::{DefaultNla, NlaBuffer};
 use netlink_packet_utils::nla::{Nla, NlasIterator};
 use netlink_packet_utils::{DecodeError, Emitable, Parseable};
@@ -107,17 +106,26 @@ impl TcActionMessageFlagsWithSelector {
 impl<'a, T: AsRef<[u8]> + 'a + ?Sized> Parseable<NlaBuffer<&'a T>>
     for TcActionMessageFlagsWithSelector
 {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let value = buf.value();
         if value.len() != 8 {
             return Err(DecodeError::from("invalid length"));
         }
         let flags = TcActionMessageFlags::from_bits(u32::from_ne_bytes(
-            value[0..4].try_into().context("invalid length")?,
+            value[0..4].try_into().map_err(|e| {
+                DecodeError::from(format!(
+                    "Failed to parse TcActionMessageFlagsWithSelector: {e}"
+                ))
+            })?,
         ))
         .ok_or_else(|| DecodeError::from("invalid flags"))?;
         let selector = TcActionMessageFlags::from_bits(u32::from_ne_bytes(
-            value[4..].try_into().context("invalid length")?,
+            value[4..].try_into().map_err(|e| {
+                DecodeError::from(format!(
+                    "Failed to parse TcActionMessageFlagsWithSelector selector: {e}"
+                ))
+            })?,
         ))
         .ok_or_else(|| DecodeError::from("invalid flags selector"))?;
         Ok(Self::new_with_selector(flags, selector))
@@ -154,6 +162,7 @@ pub enum TcActionMessageAttribute {
 impl<'a, T: AsRef<[u8]> + 'a + ?Sized> Parseable<NlaBuffer<&'a T>>
     for TcActionMessageAttribute
 {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         Ok(match buf.kind() {
             TCA_ACT_TAB => {
@@ -167,19 +176,26 @@ impl<'a, T: AsRef<[u8]> + 'a + ?Sized> Parseable<NlaBuffer<&'a T>>
             }
             TCA_ROOT_COUNT => {
                 let count = u32::from_ne_bytes(
-                    buf.value().try_into().context("invalid length")?,
+                    buf.value().try_into().map_err(|e| {
+                        DecodeError::from(format!(
+                            "Failed to parse TCA_ROOT_COUNT: {e}"
+                        ))
+                    })?,
                 );
                 Self::RootCount(count)
             }
             TCA_ROOT_TIME_DELTA => {
                 let delta = u32::from_be_bytes(
-                    buf.value().try_into().context("invalid length")?,
+                    buf.value().try_into().map_err(|e| {
+                        DecodeError::from(format!(
+                            "Failed to parse TCA_ROOT_TIME_DELTA: {e}"
+                        ))
+                    })?,
                 );
                 Self::RootTimeDelta(delta)
             }
             TCA_ROOT_EXT_WARN_MSG => {
-                let msg = String::from_utf8(buf.value().to_vec())
-                    .context("invalid utf8")?;
+                let msg = String::from_utf8(buf.value().to_vec())?;
                 Self::RootExtWarnMsg(msg)
             }
             _ => Self::Other(DefaultNla::parse(buf)?),
@@ -231,6 +247,7 @@ impl Nla for TcActionMessageAttribute {
 impl<'a, T: AsRef<[u8]> + 'a + ?Sized> Parseable<TcActionMessageBuffer<&'a T>>
     for TcActionMessage
 {
+    type Error = DecodeError;
     fn parse(buf: &TcActionMessageBuffer<&'a T>) -> Result<Self, DecodeError> {
         let attrs: Result<Vec<_>, DecodeError> = buf
             .attributes()
@@ -238,8 +255,7 @@ impl<'a, T: AsRef<[u8]> + 'a + ?Sized> Parseable<TcActionMessageBuffer<&'a T>>
             .collect::<Result<Vec<_>, _>>();
 
         Ok(Self {
-            header: TcActionMessageHeader::parse(buf)
-                .context("failed to parse tc message header")?,
+            header: TcActionMessageHeader::parse(buf)?,
             attributes: attrs?,
         })
     }

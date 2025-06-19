@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{NlaBuffer, NlasIterator},
     traits::{Emitable, Parseable},
@@ -28,6 +27,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> AddressMessageBuffer<&'a T> {
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
         NlasIterator::new(self.payload())
+            .map(|result| result.map_err(DecodeError::from))
     }
 }
 
@@ -76,6 +76,7 @@ impl Emitable for AddressMessage {
 }
 
 impl<T: AsRef<[u8]>> Parseable<AddressMessageBuffer<T>> for AddressHeader {
+    type Error = DecodeError;
     fn parse(buf: &AddressMessageBuffer<T>) -> Result<Self, DecodeError> {
         Ok(Self {
             family: buf.family().into(),
@@ -90,12 +91,11 @@ impl<T: AsRef<[u8]>> Parseable<AddressMessageBuffer<T>> for AddressHeader {
 impl<'a, T: AsRef<[u8]> + 'a> Parseable<AddressMessageBuffer<&'a T>>
     for AddressMessage
 {
+    type Error = DecodeError;
     fn parse(buf: &AddressMessageBuffer<&'a T>) -> Result<Self, DecodeError> {
         Ok(AddressMessage {
-            header: AddressHeader::parse(buf)
-                .context("failed to parse address message header")?,
-            attributes: Vec::<AddressAttribute>::parse(buf)
-                .context("failed to parse address message NLAs")?,
+            header: AddressHeader::parse(buf)?,
+            attributes: Vec::<AddressAttribute>::parse(buf)?,
         })
     }
 }
@@ -103,6 +103,7 @@ impl<'a, T: AsRef<[u8]> + 'a> Parseable<AddressMessageBuffer<&'a T>>
 impl<'a, T: AsRef<[u8]> + 'a> Parseable<AddressMessageBuffer<&'a T>>
     for Vec<AddressAttribute>
 {
+    type Error = DecodeError;
     fn parse(buf: &AddressMessageBuffer<&'a T>) -> Result<Self, DecodeError> {
         let mut attributes = vec![];
         for nla_buf in buf.attributes() {

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
     DecodeError, Parseable,
@@ -198,6 +197,7 @@ impl Nla for Seg6Header {
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
     for RouteSeg6IpTunnel
 {
+    type Error = DecodeError;
     fn parse(
         buf: &NlaBuffer<&'a T>,
     ) -> Result<Self, netlink_packet_utils::DecodeError> {
@@ -224,10 +224,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                     segments,
                 })
             }
-            _ => Self::Other(
-                DefaultNla::parse(buf)
-                    .context("invalid NLA value (unknown type) value")?,
-            ),
+            _ => Self::Other(DefaultNla::parse(buf)?),
         })
     }
 }

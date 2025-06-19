@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
     parsers::parse_string,
@@ -49,17 +48,12 @@ impl Nla for Prop {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for Prop {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
-            IFLA_ALT_IFNAME => Prop::AltIfName(
-                parse_string(payload)
-                    .context("invalid IFLA_ALT_IFNAME value")?,
-            ),
-            kind => Prop::Other(
-                DefaultNla::parse(buf)
-                    .context(format!("Unknown NLA type {kind}"))?,
-            ),
+            IFLA_ALT_IFNAME => Prop::AltIfName(parse_string(payload)?),
+            _kind => Prop::Other(DefaultNla::parse(buf)?),
         })
     }
 }

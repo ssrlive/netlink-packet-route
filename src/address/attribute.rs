@@ -3,7 +3,6 @@
 use std::mem::size_of;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-use anyhow::Context;
 use byteorder::{ByteOrder, NativeEndian};
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
@@ -110,6 +109,8 @@ impl Nla for AddressAttribute {
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
     for AddressAttribute
 {
+    type Error = DecodeError;
+
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
@@ -145,9 +146,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                     )));
                 }
             }
-            IFA_LABEL => Self::Label(
-                parse_string(payload).context("invalid IFA_LABEL value")?,
-            ),
+            IFA_LABEL => Self::Label(parse_string(payload)?),
             IFA_BROADCAST => {
                 if payload.len() == IPV4_ADDR_LEN {
                     let mut data = [0u8; IPV4_ADDR_LEN];
@@ -172,10 +171,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                     )));
                 }
             }
-            IFA_CACHEINFO => Self::CacheInfo(
-                CacheInfo::parse(&CacheInfoBuffer::new(payload))
-                    .context(format!("Invalid IFA_CACHEINFO {payload:?}"))?,
-            ),
+            IFA_CACHEINFO => Self::CacheInfo(CacheInfo::parse(
+                &CacheInfoBuffer::new(payload),
+            )?),
             IFA_MULTICAST => {
                 if payload.len() == IPV6_ADDR_LEN {
                     let mut data = [0u8; IPV6_ADDR_LEN];
@@ -188,13 +186,10 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                     )));
                 }
             }
-            IFA_FLAGS => Self::Flags(AddressFlags::from_bits_retain(
-                parse_u32(payload).context("invalid IFA_FLAGS value")?,
-            )),
-            kind => Self::Other(
-                DefaultNla::parse(buf)
-                    .context(format!("unknown NLA type {kind}"))?,
-            ),
+            IFA_FLAGS => {
+                Self::Flags(AddressFlags::from_bits_retain(parse_u32(payload)?))
+            }
+            _kind => Self::Other(DefaultNla::parse(buf)?),
         })
     }
 }

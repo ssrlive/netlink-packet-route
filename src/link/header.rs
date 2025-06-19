@@ -26,7 +26,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized> LinkMessageBuffer<&'a T> {
     pub fn attributes(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|result| {
+            result.map_err(|e| DecodeError::from(format!("NLA error: {e}")))
+        })
     }
 }
 
@@ -86,6 +88,7 @@ impl Emitable for LinkHeader {
 }
 
 impl<T: AsRef<[u8]>> Parseable<LinkMessageBuffer<T>> for LinkHeader {
+    type Error = DecodeError;
     fn parse(buf: &LinkMessageBuffer<T>) -> Result<Self, DecodeError> {
         Ok(Self {
             interface_family: buf.interface_family().into(),

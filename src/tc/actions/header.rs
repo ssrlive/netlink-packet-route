@@ -19,7 +19,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> TcActionMessageBuffer<&'a T> {
     pub fn attributes(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|nla| {
+            nla.map_err(|e| {
+                DecodeError::from(format!(
+                    "Failed to parse traffic control action attribute: {e}"
+                ))
+            })
+        })
     }
 }
 
@@ -44,6 +50,7 @@ impl Emitable for TcActionMessageHeader {
 impl<T: AsRef<[u8]>> Parseable<TcActionMessageBuffer<T>>
     for TcActionMessageHeader
 {
+    type Error = DecodeError;
     fn parse(buf: &TcActionMessageBuffer<T>) -> Result<Self, DecodeError> {
         Ok(TcActionMessageHeader {
             family: buf.family().into(),

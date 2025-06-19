@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{NlaBuffer, NlasIterator},
     traits::{Emitable, ParseableParametrized},
@@ -86,6 +85,11 @@ impl<'a, T: AsRef<[u8]> + ?Sized> RouteNextHopBuffer<&'a T> {
         NlasIterator::new(
             &self.payload()[..(self.length() as usize - PAYLOAD_OFFSET)],
         )
+        .map(|nla_buf| {
+            nla_buf.map_err(|e| {
+                DecodeError::from(format!("Failed to parse NLA: {e}"))
+            })
+        })
     }
 }
 
@@ -108,6 +112,7 @@ impl<T: AsRef<[u8]>>
         (AddressFamily, RouteType, RouteLwEnCapType),
     > for RouteNextHop
 {
+    type Error = DecodeError;
     fn parse_with_param(
         buf: &RouteNextHopBuffer<&T>,
         (address_family, route_type, encap_type): (
@@ -117,11 +122,9 @@ impl<T: AsRef<[u8]>>
         ),
     ) -> Result<RouteNextHop, DecodeError> {
         let attributes = Vec::<RouteAttribute>::parse_with_param(
-            &RouteNextHopBuffer::new_checked(buf.buffer)
-                .context("cannot parse route attributes in next-hop")?,
+            &RouteNextHopBuffer::new_checked(buf.buffer)?,
             (address_family, route_type, encap_type),
-        )
-        .context("cannot parse route attributes in next-hop")?;
+        )?;
         Ok(RouteNextHop {
             flags: RouteNextHopFlags::from_bits_retain(buf.flags()),
             hops: buf.hops(),
@@ -137,6 +140,7 @@ impl<'a, T: AsRef<[u8]> + 'a>
         (AddressFamily, RouteType, RouteLwEnCapType),
     > for Vec<RouteAttribute>
 {
+    type Error = DecodeError;
     fn parse_with_param(
         buf: &RouteNextHopBuffer<&'a T>,
         (address_family, route_type, encap_type): (

@@ -23,7 +23,11 @@ impl<'a, T: AsRef<[u8]> + ?Sized> PrefixMessageBuffer<&'a T> {
     pub fn nlas(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|nla| {
+            nla.map_err(|e| {
+                DecodeError::from(format!("PrefixMessageBuffer: {e}"))
+            })
+        })
     }
 }
 

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_core::{
     NetlinkDeserializable, NetlinkHeader, NetlinkPayload, NetlinkSerializable,
 };
@@ -85,6 +84,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
     ParseableParametrized<RouteNetlinkMessageBuffer<&'a T>, u16>
     for RouteNetlinkMessage
 {
+    type Error = DecodeError;
     fn parse_with_param(
         buf: &RouteNetlinkMessageBuffer<&'a T>,
         message_type: u16,
@@ -93,8 +93,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
             // Link messages
             RTM_NEWLINK | RTM_GETLINK | RTM_DELLINK | RTM_SETLINK => {
                 let msg = match LinkMessageBuffer::new_checked(&buf.inner()) {
-                    Ok(buf) => LinkMessage::parse(&buf)
-                        .context("invalid link message")?,
+                    Ok(buf) => LinkMessage::parse(&buf)?,
                     // HACK: iproute2 sends invalid RTM_GETLINK message, where
                     // the header is limited to the
                     // interface family (1 byte) and 3 bytes of padding.
@@ -122,8 +121,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
             RTM_NEWADDR | RTM_GETADDR | RTM_DELADDR => {
                 let msg = match AddressMessageBuffer::new_checked(&buf.inner())
                 {
-                    Ok(buf) => AddressMessage::parse(&buf)
-                        .context("invalid link message")?,
+                    Ok(buf) => AddressMessage::parse(&buf)?,
                     // HACK: iproute2 sends invalid RTM_GETADDR message, where
                     // the header is limited to the
                     // interface family (1 byte) and 3 bytes of padding.
@@ -151,12 +149,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
 
             // Neighbour messages
             RTM_NEWNEIGH | RTM_GETNEIGH | RTM_DELNEIGH => {
-                let err = "invalid neighbour message";
                 let msg = NeighbourMessage::parse(
-                    &NeighbourMessageBuffer::new_checked(&buf.inner())
-                        .context(err)?,
-                )
-                .context(err)?;
+                    &NeighbourMessageBuffer::new_checked(&buf.inner())?,
+                )?;
                 match message_type {
                     RTM_GETNEIGH => RouteNetlinkMessage::GetNeighbour(msg),
                     RTM_NEWNEIGH => RouteNetlinkMessage::NewNeighbour(msg),
@@ -167,12 +162,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
 
             // Neighbour table messages
             RTM_NEWNEIGHTBL | RTM_GETNEIGHTBL | RTM_SETNEIGHTBL => {
-                let err = "invalid neighbour table message";
                 let msg = NeighbourTableMessage::parse(
-                    &NeighbourTableMessageBuffer::new_checked(&buf.inner())
-                        .context(err)?,
-                )
-                .context(err)?;
+                    &NeighbourTableMessageBuffer::new_checked(&buf.inner())?,
+                )?;
                 match message_type {
                     RTM_GETNEIGHTBL => {
                         RouteNetlinkMessage::GetNeighbourTable(msg)
@@ -190,8 +182,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
             // Route messages
             RTM_NEWROUTE | RTM_GETROUTE | RTM_DELROUTE => {
                 let msg = match RouteMessageBuffer::new_checked(&buf.inner()) {
-                    Ok(buf) => RouteMessage::parse(&buf)
-                        .context("invalid route message")?,
+                    Ok(buf) => RouteMessage::parse(&buf)?,
                     // HACK: iproute2 sends invalid RTM_GETROUTE message, where
                     // the header is limited to the
                     // interface family (1 byte) and 3 bytes of padding.
@@ -228,23 +219,15 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
 
             // Prefix messages
             RTM_NEWPREFIX => {
-                let err = "invalid prefix message";
-                RouteNetlinkMessage::NewPrefix(
-                    PrefixMessage::parse(
-                        &PrefixMessageBuffer::new_checked(&buf.inner())
-                            .context(err)?,
-                    )
-                    .context(err)?,
-                )
+                RouteNetlinkMessage::NewPrefix(PrefixMessage::parse(
+                    &PrefixMessageBuffer::new_checked(&buf.inner())?,
+                )?)
             }
 
             RTM_NEWRULE | RTM_GETRULE | RTM_DELRULE => {
-                let err = "invalid fib rule message";
-                let msg = RuleMessage::parse(
-                    &RuleMessageBuffer::new_checked(&buf.inner())
-                        .context(err)?,
-                )
-                .context(err)?;
+                let msg = RuleMessage::parse(&RuleMessageBuffer::new_checked(
+                    &buf.inner(),
+                )?)?;
                 match message_type {
                     RTM_NEWRULE => RouteNetlinkMessage::NewRule(msg),
                     RTM_DELRULE => RouteNetlinkMessage::DelRule(msg),
@@ -257,11 +240,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
             | RTM_DELTCLASS | RTM_GETTCLASS | RTM_NEWTFILTER
             | RTM_DELTFILTER | RTM_GETTFILTER | RTM_NEWCHAIN | RTM_DELCHAIN
             | RTM_GETCHAIN => {
-                let err = "invalid tc message";
-                let msg = TcMessage::parse(
-                    &TcMessageBuffer::new_checked(&buf.inner()).context(err)?,
-                )
-                .context(err)?;
+                let msg = TcMessage::parse(&TcMessageBuffer::new_checked(
+                    &buf.inner(),
+                )?)?;
                 match message_type {
                     RTM_NEWQDISC => {
                         RouteNetlinkMessage::NewQueueDiscipline(msg)
@@ -292,12 +273,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
             }
 
             RTM_NEWACTION | RTM_DELACTION | RTM_GETACTION => {
-                let err = "invalid tc action message";
                 let msg = TcActionMessage::parse(
-                    &TcActionMessageBuffer::new_checked(&buf.inner())
-                        .context(err)?,
-                )
-                .context(err)?;
+                    &TcActionMessageBuffer::new_checked(&buf.inner())?,
+                )?;
                 match message_type {
                     RTM_NEWACTION => RouteNetlinkMessage::NewTrafficAction(msg),
                     RTM_DELACTION => RouteNetlinkMessage::DelTrafficAction(msg),
@@ -308,12 +286,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized>
 
             // ND ID Messages
             RTM_NEWNSID | RTM_GETNSID | RTM_DELNSID => {
-                let err = "invalid nsid message";
-                let msg = NsidMessage::parse(
-                    &NsidMessageBuffer::new_checked(&buf.inner())
-                        .context(err)?,
-                )
-                .context(err)?;
+                let msg = NsidMessage::parse(&NsidMessageBuffer::new_checked(
+                    &buf.inner(),
+                )?)?;
                 match message_type {
                     RTM_NEWNSID => RouteNetlinkMessage::NewNsId(msg),
                     RTM_DELNSID => RouteNetlinkMessage::DelNsId(msg),

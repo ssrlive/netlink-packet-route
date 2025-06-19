@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer, NlasIterator},
     parsers::parse_string,
@@ -104,6 +103,7 @@ pub(crate) struct VecLinkInfo(pub(crate) Vec<LinkInfo>);
 // The downside is that this impl will not be exposed.
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecLinkInfo {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let mut nlas = Vec::new();
         let mut link_info_kind: Option<InfoKind> = None;
@@ -159,11 +159,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for VecLinkInfo {
                             .into());
                     }
                 }
-                _kind => nlas.push(LinkInfo::Other(
-                    DefaultNla::parse(&nla).context(format!(
-                        "Unknown NLA type for IFLA_INFO_DATA {nla:?}"
-                    ))?,
-                )),
+                _kind => nlas.push(LinkInfo::Other(DefaultNla::parse(&nla)?)),
             }
         }
         Ok(Self(nlas))
@@ -293,6 +289,7 @@ impl Nla for InfoKind {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoKind {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<InfoKind, DecodeError> {
         if buf.kind() != IFLA_INFO_KIND {
             return Err(format!(
@@ -301,8 +298,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoKind {
             )
             .into());
         }
-        let s = parse_string(buf.value())
-            .context("invalid IFLA_INFO_KIND value")?;
+        let s = parse_string(buf.value())?;
         Ok(match s.as_str() {
             DUMMY => Self::Dummy,
             IFB => Self::Ifb,

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     traits::{Emitable, Parseable, ParseableParametrized},
     DecodeError,
@@ -34,9 +33,9 @@ impl Emitable for RouteMessage {
 impl<'a, T: AsRef<[u8]> + 'a> Parseable<RouteMessageBuffer<&'a T>>
     for RouteMessage
 {
+    type Error = DecodeError;
     fn parse(buf: &RouteMessageBuffer<&'a T>) -> Result<Self, DecodeError> {
-        let header = RouteHeader::parse(buf)
-            .context("failed to parse route message header")?;
+        let header = RouteHeader::parse(buf)?;
         let address_family = header.address_family;
         let route_type = header.kind;
         Ok(RouteMessage {
@@ -44,8 +43,7 @@ impl<'a, T: AsRef<[u8]> + 'a> Parseable<RouteMessageBuffer<&'a T>>
             attributes: Vec::<RouteAttribute>::parse_with_param(
                 buf,
                 (address_family, route_type),
-            )
-            .context("failed to parse route message NLAs")?,
+            )?,
         })
     }
 }
@@ -54,6 +52,7 @@ impl<'a, T: AsRef<[u8]> + 'a>
     ParseableParametrized<RouteMessageBuffer<&'a T>, (AddressFamily, RouteType)>
     for Vec<RouteAttribute>
 {
+    type Error = DecodeError;
     fn parse_with_param(
         buf: &RouteMessageBuffer<&'a T>,
         (address_family, route_type): (AddressFamily, RouteType),

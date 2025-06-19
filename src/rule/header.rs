@@ -27,7 +27,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> RuleMessageBuffer<&'a T> {
     pub fn attributes(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|nla| {
+            nla.map_err(|e| {
+                DecodeError::from(format!(
+                    "Failed to parse rule attribute: {e}"
+                ))
+            })
+        })
     }
 }
 
@@ -63,6 +69,7 @@ impl Emitable for RuleHeader {
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<RuleMessageBuffer<&'a T>>
     for RuleHeader
 {
+    type Error = DecodeError;
     fn parse(buf: &RuleMessageBuffer<&'a T>) -> Result<Self, DecodeError> {
         Ok(RuleHeader {
             family: buf.family().into(),

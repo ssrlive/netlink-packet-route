@@ -25,7 +25,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> TcMessageBuffer<&'a T> {
     pub fn attributes(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|nla| {
+            nla.map_err(|e| {
+                DecodeError::from(format!(
+                    "Failed to parse NLA in TcMessageBuffer: {e}"
+                ))
+            })
+        })
     }
 }
 
@@ -61,6 +67,7 @@ impl Emitable for TcHeader {
 }
 
 impl<T: AsRef<[u8]>> Parseable<TcMessageBuffer<T>> for TcHeader {
+    type Error = DecodeError;
     fn parse(buf: &TcMessageBuffer<T>) -> Result<Self, DecodeError> {
         Ok(Self {
             family: buf.family().into(),

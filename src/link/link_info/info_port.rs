@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{Nla, NlaBuffer, NlasIterator},
     parsers::parse_string,
@@ -71,6 +70,7 @@ impl Nla for InfoPortKind {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoPortKind {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<InfoPortKind, DecodeError> {
         if buf.kind() != IFLA_INFO_PORT_KIND {
             return Err(format!(
@@ -79,8 +79,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for InfoPortKind {
             )
             .into());
         }
-        let s = parse_string(buf.value())
-            .context("invalid IFLA_INFO_PORT_KIND value")?;
+        let s = parse_string(buf.value())?;
         Ok(match s.as_str() {
             BOND => Self::Bond,
             BRIDGE => Self::Bridge,
@@ -132,23 +131,40 @@ impl InfoPortData {
     ) -> Result<InfoPortData, DecodeError> {
         let port_data = match kind {
             InfoPortKind::Bond => NlasIterator::new(payload)
-                .map(|nla| nla.and_then(|nla| InfoBondPort::parse(&nla)))
+                .map(|nla| {
+                    nla.map_err(|e| {
+                        DecodeError::from(format!("BondPort error: {e}"))
+                    })
+                    .and_then(|nla| InfoBondPort::parse(&nla))
+                })
                 .collect::<Result<Vec<_>, _>>()
-                .map(InfoPortData::BondPort),
+                .map(InfoPortData::BondPort)
+                .map_err(|e| DecodeError::from(format!("BondPort error: {e}"))),
             InfoPortKind::Bridge => NlasIterator::new(payload)
-                .map(|nla| nla.and_then(|nla| InfoBridgePort::parse(&nla)))
+                .map(|nla| {
+                    nla.map_err(|e| {
+                        DecodeError::from(format!("BondPort error: {e}"))
+                    })
+                    .and_then(|nla| InfoBridgePort::parse(&nla))
+                })
                 .collect::<Result<Vec<_>, _>>()
-                .map(InfoPortData::BridgePort),
+                .map(InfoPortData::BridgePort)
+                .map_err(|e| {
+                    DecodeError::from(format!("BridgePort error: {e}"))
+                }),
             InfoPortKind::Vrf => NlasIterator::new(payload)
-                .map(|nla| nla.and_then(|nla| InfoVrfPort::parse(&nla)))
+                .map(|nla| {
+                    nla.map_err(|e| {
+                        DecodeError::from(format!("BondPort error: {e}"))
+                    })
+                    .and_then(|nla| InfoVrfPort::parse(&nla))
+                })
                 .collect::<Result<Vec<_>, _>>()
-                .map(InfoPortData::VrfPort),
+                .map(InfoPortData::VrfPort)
+                .map_err(|e| DecodeError::from(format!("VrfPort error: {e}"))),
             InfoPortKind::Other(_) => Ok(InfoPortData::Other(payload.to_vec())),
         };
 
-        Ok(port_data.context(format!(
-            "failed to parse IFLA_INFO_PORT_DATA (IFLA_INFO_PORT_KIND is \
-             '{kind}')"
-        ))?)
+        port_data
     }
 }

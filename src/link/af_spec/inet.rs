@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{self, DefaultNla, NlaBuffer, NlasIterator},
     traits::{Emitable, Parseable},
@@ -27,11 +26,11 @@ pub(crate) struct VecAfSpecInet(pub(crate) Vec<AfSpecInet>);
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
     for VecAfSpecInet
 {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let mut nlas = vec![];
-        let err = "Invalid AF_INET NLA for IFLA_AF_SPEC(AF_UNSPEC)";
         for nla in NlasIterator::new(buf.into_inner()) {
-            let nla = nla.context(err)?;
+            let nla = nla?;
             nlas.push(AfSpecInet::parse(&nla)?);
         }
         Ok(Self(nlas))
@@ -65,6 +64,7 @@ impl nla::Nla for AfSpecInet {
 }
 
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for AfSpecInet {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         use self::AfSpecInet::*;
 
@@ -80,9 +80,7 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for AfSpecInet {
                     .as_slice(),
                 ))?)
             }
-            kind => Other(DefaultNla::parse(buf).context(format!(
-                "Unknown NLA type {kind} for IFLA_AF_SPEC(inet)"
-            ))?),
+            _kind => Other(DefaultNla::parse(buf)?),
         })
     }
 }
@@ -162,6 +160,7 @@ pub struct InetDevConf {
 }
 
 impl<T: AsRef<[u8]>> Parseable<InetDevConfBuffer<T>> for InetDevConf {
+    type Error = DecodeError;
     fn parse(buf: &InetDevConfBuffer<T>) -> Result<Self, DecodeError> {
         Ok(Self {
             forwarding: buf.forwarding(),

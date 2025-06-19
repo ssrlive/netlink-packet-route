@@ -24,7 +24,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized> NeighbourMessageBuffer<&'a T> {
     pub fn attributes(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|result| {
+            result.map_err(|e| DecodeError::from(format!("NLA error: {e}")))
+        })
     }
 }
 
@@ -58,6 +60,7 @@ pub struct NeighbourHeader {
 }
 
 impl<T: AsRef<[u8]>> Parseable<NeighbourMessageBuffer<T>> for NeighbourHeader {
+    type Error = DecodeError;
     fn parse(buf: &NeighbourMessageBuffer<T>) -> Result<Self, DecodeError> {
         Ok(Self {
             family: buf.family().into(),

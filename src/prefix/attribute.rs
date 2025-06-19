@@ -2,7 +2,6 @@
 
 use std::net::Ipv6Addr;
 
-use anyhow::Context;
 use netlink_packet_utils::{
     nla::{self, DefaultNla, NlaBuffer},
     traits::Parseable,
@@ -50,6 +49,7 @@ impl nla::Nla for PrefixAttribute {
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
     for PrefixAttribute
 {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         match buf.kind() {
@@ -63,11 +63,9 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                     )))
                 }
             }
-            PREFIX_CACHEINFO => Ok(Self::CacheInfo(
-                CacheInfo::parse(&CacheInfoBuffer::new(payload)).context(
-                    format!("Invalid PREFIX_CACHEINFO: {payload:?}"),
-                )?,
-            )),
+            PREFIX_CACHEINFO => Ok(Self::CacheInfo(CacheInfo::parse(
+                &CacheInfoBuffer::new(payload),
+            )?)),
             _ => Ok(Self::Other(DefaultNla::parse(buf)?)),
         }
     }

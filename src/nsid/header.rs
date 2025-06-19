@@ -18,7 +18,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> NsidMessageBuffer<&'a T> {
     pub fn attributes(
         &self,
     ) -> impl Iterator<Item = Result<NlaBuffer<&'a [u8]>, DecodeError>> {
-        NlasIterator::new(self.payload())
+        NlasIterator::new(self.payload()).map(|nla| {
+            nla.map_err(|e| {
+                DecodeError::from(format!(
+                    "Failed to parse NSID attributes {e}"
+                ))
+            })
+        })
     }
 }
 
@@ -39,6 +45,7 @@ impl Emitable for NsidHeader {
 }
 
 impl<T: AsRef<[u8]>> Parseable<NsidMessageBuffer<T>> for NsidHeader {
+    type Error = DecodeError;
     fn parse(buf: &NsidMessageBuffer<T>) -> Result<Self, DecodeError> {
         Ok(NsidHeader {
             family: buf.family().into(),

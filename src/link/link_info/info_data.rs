@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
-
 use netlink_packet_utils::{
     nla::{Nla, NlaBuffer, NlasIterator},
     DecodeError, Emitable, Parseable,
@@ -118,9 +116,7 @@ impl InfoData {
             InfoKind::Bridge => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoBridge::parse(nla)?;
                     v.push(parsed);
                 }
@@ -129,9 +125,7 @@ impl InfoData {
             InfoKind::Vlan => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoVlan::parse(nla)?;
                     v.push(parsed);
                 }
@@ -140,27 +134,21 @@ impl InfoData {
             InfoKind::Tun => {
                 let mut nlas = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoTun::parse(nla)?;
                     nlas.push(parsed);
                 }
                 InfoData::Tun(nlas)
             }
             InfoKind::Veth => {
-                let nla_buf = NlaBuffer::new_checked(&payload).context(
-                    format!("invalid IFLA_INFO_DATA for {kind} {payload:?}"),
-                )?;
+                let nla_buf = NlaBuffer::new_checked(&payload)?;
                 let parsed = InfoVeth::parse(&nla_buf)?;
                 InfoData::Veth(parsed)
             }
             InfoKind::Vxlan => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoVxlan::parse(nla)?;
                     v.push(parsed);
                 }
@@ -169,9 +157,7 @@ impl InfoData {
             InfoKind::Bond => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoBond::parse(nla)?;
                     v.push(parsed);
                 }
@@ -180,9 +166,7 @@ impl InfoData {
             InfoKind::IpVlan => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoIpVlan::parse(nla)?;
                     v.push(parsed);
                 }
@@ -191,9 +175,7 @@ impl InfoData {
             InfoKind::IpVtap => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoIpVtap::parse(nla)?;
                     v.push(parsed);
                 }
@@ -202,9 +184,7 @@ impl InfoData {
             InfoKind::MacVlan => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoMacVlan::parse(nla)?;
                     v.push(parsed);
                 }
@@ -213,9 +193,7 @@ impl InfoData {
             InfoKind::MacVtap => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoMacVtap::parse(nla)?;
                     v.push(parsed);
                 }
@@ -224,9 +202,7 @@ impl InfoData {
             InfoKind::GreTap => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoGreTap::parse(nla)?;
                     v.push(parsed);
                 }
@@ -235,9 +211,7 @@ impl InfoData {
             InfoKind::GreTap6 => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoGreTap6::parse(nla)?;
                     v.push(parsed);
                 }
@@ -246,9 +220,7 @@ impl InfoData {
             InfoKind::SitTun => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoSitTun::parse(nla)?;
                     v.push(parsed);
                 }
@@ -257,9 +229,7 @@ impl InfoData {
             InfoKind::GreTun => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoGreTun::parse(nla)?;
                     v.push(parsed);
                 }
@@ -268,9 +238,7 @@ impl InfoData {
             InfoKind::GreTun6 => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoGreTun6::parse(nla)?;
                     v.push(parsed);
                 }
@@ -279,9 +247,7 @@ impl InfoData {
             InfoKind::Vti => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoVti::parse(nla)?;
                     v.push(parsed);
                 }
@@ -290,9 +256,7 @@ impl InfoData {
             InfoKind::Vrf => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoVrf::parse(nla)?;
                     v.push(parsed);
                 }
@@ -301,9 +265,7 @@ impl InfoData {
             InfoKind::Gtp => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoGtp::parse(nla)?;
                     v.push(parsed);
                 }
@@ -312,9 +274,7 @@ impl InfoData {
             InfoKind::Ipoib => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoIpoib::parse(nla)?;
                     v.push(parsed);
                 }
@@ -323,9 +283,7 @@ impl InfoData {
             InfoKind::Xfrm => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoXfrm::parse(nla)?;
                     v.push(parsed);
                 }
@@ -334,9 +292,7 @@ impl InfoData {
             InfoKind::MacSec => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoMacSec::parse(nla)?;
                     v.push(parsed);
                 }
@@ -345,9 +301,7 @@ impl InfoData {
             InfoKind::Hsr => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoHsr::parse(nla)?;
                     v.push(parsed);
                 }
@@ -356,9 +310,7 @@ impl InfoData {
             InfoKind::Geneve => {
                 let mut v = Vec::new();
                 for nla in NlasIterator::new(payload) {
-                    let nla = &nla.context(format!(
-                        "invalid IFLA_INFO_DATA for {kind} {payload:?}"
-                    ))?;
+                    let nla = &nla?;
                     let parsed = InfoGeneve::parse(nla)?;
                     v.push(parsed);
                 }

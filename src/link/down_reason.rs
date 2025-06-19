@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-use anyhow::Context;
 use byteorder::{ByteOrder, NativeEndian};
 use netlink_packet_utils::{
     nla::{DefaultNla, Nla, NlaBuffer},
@@ -22,23 +21,13 @@ pub enum LinkProtocolDownReason {
 impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
     for LinkProtocolDownReason
 {
+    type Error = DecodeError;
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
-            IFLA_PROTO_DOWN_REASON_MASK => {
-                Self::Mask(parse_u32(payload).context(format!(
-                    "invalid IFLA_PROTO_DOWN_REASON_MASK {payload:?}"
-                ))?)
-            }
-            IFLA_PROTO_DOWN_REASON_VALUE => {
-                Self::Value(parse_u32(payload).context(format!(
-                    "invalid IFLA_PROTO_DOWN_REASON_MASK {payload:?}"
-                ))?)
-            }
-            kind => Self::Other(DefaultNla::parse(buf).context(format!(
-                "unknown NLA type {kind} for IFLA_PROTO_DOWN_REASON: \
-                 {payload:?}"
-            ))?),
+            IFLA_PROTO_DOWN_REASON_MASK => Self::Mask(parse_u32(payload)?),
+            IFLA_PROTO_DOWN_REASON_VALUE => Self::Value(parse_u32(payload)?),
+            _kind => Self::Other(DefaultNla::parse(buf)?),
         })
     }
 }
